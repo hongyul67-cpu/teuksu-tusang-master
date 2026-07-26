@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>특수 투상도 비교기 — 등각 · 사투상 · 투시</title>
+<style>
+  :root{--bg:#0b2540;--panel:#123459;--panel-light:#1c4474;--text:#eaf4ff;--text-dim:#9fc1e0;
+    --accent:#ffb454;--correct:#5fd86f;--wrong:#ff6b6b;--grid:rgba(234,244,255,.06);
+    --paper:#f4efe0;--ink:#1c3247;--link:#5bc8de;--vp:#e2564a;}
+  *{box-sizing:border-box}
+  body{margin:0;color:var(--text);min-height:100vh;padding:18px 14px 70px;
+    font-family:'Pretendard','Apple SD Gothic Neo','Malgun Gothic',-apple-system,sans-serif;
+    background:linear-gradient(var(--grid) 1px,transparent 1px) 0 0/40px 40px,
+               linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/40px 40px,var(--bg);}
+  .wrap{max-width:900px;margin:0 auto}
+  .eyebrow{font-size:.74rem;letter-spacing:.18em;color:var(--accent);text-transform:uppercase;font-weight:700;margin-bottom:6px}
+  h1{font-size:1.5rem;margin:0 0 4px}
+  .subtitle{color:var(--text-dim);font-size:.94rem;margin-bottom:16px;line-height:1.55}
+  .panel{background:var(--panel);border:1px solid rgba(234,244,255,.12);border-radius:14px;padding:20px;margin-bottom:16px}
+  .tabs{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:16px}
+  .tab{flex:1 1 130px;background:transparent;border:1px solid rgba(234,244,255,.22);color:var(--text-dim);
+       padding:11px 8px;border-radius:9px;cursor:pointer;font-size:.86rem;font-weight:700;font-family:inherit}
+  .tab:hover{border-color:var(--accent);color:var(--text)}
+  .tab[aria-pressed="true"]{background:var(--accent);color:#1a1306;border-color:var(--accent)}
+
+  .gallery{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  @media(max-width:720px){.gallery{grid-template-columns:repeat(2,1fr)}}
+  .cell{background:var(--paper);border-radius:11px;padding:8px 6px 5px;position:relative;
+        border:3px solid transparent;cursor:pointer}
+  .cell.on{border-color:var(--link)}
+  .cell canvas{width:100%;height:128px;display:block}
+  .cell .nm{font-size:.8rem;font-weight:800;color:#1c3247;text-align:center;padding-top:3px}
+  .cell .sub{font-size:.68rem;color:#5b7286;text-align:center}
+
+  .row{display:flex;align-items:center;gap:9px;flex-wrap:wrap;background:#0f2032;
+       border:1px solid rgba(234,244,255,.14);border-radius:10px;padding:9px 11px;margin-bottom:12px}
+  .row .lab{font-size:.72rem;color:var(--text-dim);letter-spacing:.08em;flex:none}
+  .seg{display:flex;gap:5px;flex-wrap:wrap}
+  .segBtn{background:transparent;border:1px solid rgba(234,244,255,.24);color:var(--text);padding:9px 12px;
+          border-radius:7px;cursor:pointer;font-weight:700;font-size:.8rem;font-family:inherit}
+  .segBtn[aria-pressed="true"]{background:var(--link);color:#04121c;border-color:var(--link)}
+  input[type=range]{width:100%;-webkit-appearance:none;appearance:none;height:8px;border-radius:4px;
+    background:linear-gradient(90deg,#26425e,#4a7ba8);outline:none}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:26px;border-radius:50%;
+    background:var(--accent);border:3px solid #2a2113;cursor:pointer}
+  input[type=range]::-moz-range-thumb{width:26px;height:26px;border-radius:50%;background:var(--accent);border:3px solid #2a2113}
+  .slabel{display:flex;justify-content:space-between;font-size:.76rem;color:var(--text-dim);margin:9px 2px 5px}
+
+  .bigwrap{background:var(--paper);border-radius:12px;padding:14px 12px 12px;position:relative;margin-bottom:12px}
+  .bigwrap .cap{position:absolute;top:9px;left:13px;font-family:ui-monospace,monospace;font-size:11px;color:#5b7286;letter-spacing:.1em}
+  #bigCv{width:100%;height:300px;display:block}
+  @media(max-width:560px){#bigCv{height:250px}}
+
+  .btn{border:none;border-radius:10px;background:var(--accent);color:#1a1306;font-weight:800;
+       font-size:.95rem;padding:13px 20px;cursor:pointer;min-height:50px;font-family:inherit}
+  .btn.ghost{background:transparent;border:1px solid rgba(234,244,255,.3);color:var(--text)}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+  .btnrow{display:flex;gap:9px;flex-wrap:wrap;margin-top:12px}
+  .prompt{font-size:1.02rem;margin:14px 0 11px;line-height:1.55}
+  .prompt b{color:var(--accent)}
+  .choices{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .choice{background:var(--paper);border:3px solid transparent;border-radius:11px;padding:8px 6px 6px;
+          cursor:pointer;display:flex;flex-direction:column;align-items:center;font-family:inherit}
+  .choice .num{font-size:.76rem;font-weight:800;color:#5b7286;align-self:flex-start;margin-left:4px}
+  .choice canvas{width:100%;height:118px}
+  .choice .tx{font-weight:800;color:#1c3247;font-size:.95rem;padding:18px 4px 22px;text-align:center;line-height:1.35}
+  .choice .tx small{display:block;font-weight:600;color:#5b7286;font-size:.74rem;margin-top:4px}
+  .choice:hover:not(:disabled){border-color:var(--link)}
+  .choice.sel{border-color:var(--accent);box-shadow:0 0 0 3px rgba(255,180,84,.3)}
+  .choice.correct{border-color:var(--correct);background:#e3f5ec}
+  .choice.wrong{border-color:var(--wrong);background:#fbecea}
+  .choice:disabled{cursor:default}
+  .scorebar{display:flex;gap:16px;flex-wrap:wrap;font-size:.88rem;color:var(--text-dim);margin-top:13px}
+  .scorebar b{color:var(--text)}
+  .pill{background:var(--panel-light);border-radius:20px;padding:4px 13px;font-size:.82rem;color:var(--accent);font-weight:800}
+  .toast{font-size:.93rem;font-weight:700;min-height:22px;margin-top:10px;line-height:1.5}
+  .toast.ok{color:var(--correct)}.toast.no{color:var(--wrong)}.toast.go{color:var(--accent)}
+  .explain{background:rgba(91,200,222,.09);border-left:3px solid var(--link);border-radius:0 8px 8px 0;
+           padding:11px 13px;margin-top:11px;font-size:.87rem;color:var(--text-dim);line-height:1.65}
+  .explain b{color:var(--link)}
+  .legend{font-size:.75rem;color:var(--text-dim);margin-top:8px}
+  .legend i{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--vp);margin-right:5px}
+  .hidden{display:none !important}
+  .links{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+  .links a{color:var(--link);text-decoration:none;font-size:.83rem;border:1px solid rgba(91,200,222,.4);padding:7px 12px;border-radius:8px}
+  footer{max-width:900px;margin:14px auto 0;color:var(--text-dim);font-size:.8rem;line-height:1.6;text-align:center}
+  @media(max-width:560px){body{padding:14px 10px 60px}.panel{padding:15px}.segBtn{padding:12px 13px}.tab{padding:12px 8px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">Axonometric · Oblique · Perspective</div>
+  <h1>특수 투상도 비교기</h1>
+  <p class="subtitle"><b>똑같은 물체</b>를 등각·사투상·투시투상으로 동시에 그려 비교합니다. 투시도의 <b>소실점</b>이 실제로 어디 생기는지 눈으로 확인하세요.</p>
+
+  <div class="tabs" role="group" aria-label="모드 선택">
+    <button class="tab" id="tabLearn" aria-pressed="true">📖 비교하기</button>
+    <button class="tab" id="tabKind" aria-pressed="false">도전 ① 투상법 판별</button>
+    <button class="tab" id="tabVP" aria-pressed="false">도전 ② 소실점 개수</button>
+    <button class="tab" id="tabExam" aria-pressed="false">🎯 종합시험</button>
+  </div>
+
+  <section id="secLearn">
+    <div class="panel">
+      <div class="row">
+        <span class="lab">물체</span>
+        <div class="seg" id="shapeSeg"></div>
+      </div>
+
+      <div class="gallery" id="gallery"></div>
+
+      <div style="margin-top:14px" class="bigwrap">
+        <span class="cap" id="bigCap"></span>
+        <canvas id="bigCv"></canvas>
+      </div>
+      <div class="legend"><i></i>빨간 점 = 소실점(사라지는 점) · 빨간 선 = 그쪽으로 모이는 모서리</div>
+
+      <div id="ctlWrap">
+        <div class="slabel"><span id="ctlName">시점 거리</span><span id="ctlVal"></span></div>
+        <input id="ctlRange" type="range" min="0" max="1" step="0.01" value="0.21">
+      </div>
+
+      <div class="explain" id="learnExplain"></div>
+    </div>
+  </section>
+
+  <section id="secQuiz" class="hidden">
+    <div class="panel">
+      <div class="prompt" id="qPrompt"></div>
+      <div class="bigwrap"><span class="cap" id="qCap"></span><canvas id="qStageCv" style="height:240px"></canvas></div>
+      <div class="choices" id="qChoices" style="margin-top:14px"></div>
+      <div class="btnrow">
+        <button class="btn" id="btnSubmit" disabled>제출</button>
+        <button class="btn ghost hidden" id="btnNext">다음 문제 →</button>
+        <button class="btn ghost" id="btnRestart">처음부터</button>
+      </div>
+      <div class="scorebar">
+        <span>문제 <b id="qRound">1</b> / <b id="qTotal">8</b></span>
+        <span>맞은 개수 <b id="qScore">0</b></span>
+        <span class="pill" id="qCombo">연속 0</span>
+      </div>
+      <div class="toast go" id="qToast">보기를 고른 뒤 <b>제출</b>을 누르세요.</div>
+      <div class="explain hidden" id="qExplain"></div>
+    </div>
+  </section>
+
+  <div class="panel" style="padding:16px 20px">
+    <div style="font-size:.84rem;color:var(--text-dim);margin-bottom:8px">🔗 같은 단원의 다른 도구</div>
+    <div class="links">
+      <a href="https://hongyul67-cpu.github.io/tusang-master/" target="_blank" rel="noopener">투상도 마스터 — 개념편</a>
+      <a href="https://hongyul67-cpu.github.io/three-view-trainer/" target="_blank" rel="noopener">3면도 트레이너</a>
+      <a href="https://hongyul67-cpu.github.io/jeongaedo-master/" target="_blank" rel="noopener">전개도 마스터</a>
+      <a href="https://hongyul67-cpu.github.io/section-view-explorer/" target="_blank" rel="noopener">단면도 익스플로러</a>
+    </div>
+  </div>
+</div>
+<footer>기초제도 Ⅲ. 제도의 기본 도법 — 4. 특수 투상도 그리기<br>제작: hong · 기계 계열 특성화고 수업 보조 도구</footer>
+
+<script src="https://hongyul67-cpu.github.io/links/collector.js" data-tool="특수 투상도 비교기"></script>
+<script>
+(function(){
+"use strict";
+const rnd=n=>Math.floor(Math.random()*n), pick=a=>a[rnd(a.length)];
+const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=rnd(i+1);[a[i],a[j]]=[a[j],a[i]];}return a;};
+
+/* ============ 물체: 상자들의 합 ============ */
+const SHAPES={
+  L:{name:"L자 블록",boxes:[[0,0,0,3,1,2],[0,1,0,1,2,2]]},
+  step:{name:"계단 블록",boxes:[[0,0,0,3,1,2],[0,1,0,2,1,2],[0,2,0,1,1,2]]},
+  house:{name:"집 모양",boxes:[[0,0,0,2,2,2],[2,0,0,1,1,2]]},
+  T:{name:"T자 블록",boxes:[[0,0,0,3,1,2],[1,1,0,1,2,2]]}
+};
+const SHAPE_IDS=Object.keys(SHAPES);
+// 상자 → 면(6개) 목록. 각 면은 4개 꼭짓점
+function facesOf(sh){
+  const F=[];
+  sh.boxes.forEach(([x,y,z,w,h,d])=>{
+    const X=x+w,Y=y+h,Z=z+d;
+    const v=[[x,y,z],[X,y,z],[X,Y,z],[x,Y,z],[x,y,Z],[X,y,Z],[X,Y,Z],[x,Y,Z]];
+    [[0,1,2,3,"front"],[5,4,7,6,"back"],[4,0,3,7,"left"],[1,5,6,2,"right"],
+     [3,2,6,7,"top"],[4,5,1,0,"bottom"]].forEach(q=>{
+      F.push({pts:[v[q[0]],v[q[1]],v[q[2]],v[q[3]]],side:q[4]});
+    });
+  });
+  return F;
+}
+function centerOf(sh){
+  let mn=[9,9,9],mx=[-9,-9,-9];
+  sh.boxes.forEach(([x,y,z,w,h,d])=>{
+    mn=[Math.min(mn[0],x),Math.min(mn[1],y),Math.min(mn[2],z)];
+    mx=[Math.max(mx[0],x+w),Math.max(mx[1],y+h),Math.max(mx[2],z+d)];
+  });
+  return [(mn[0]+mx[0])/2,(mn[1]+mx[1])/2,(mn[2]+mx[2])/2];
+}
+
+/* ============ 투상법 (검증 완료) ============ */
+const D2R=Math.PI/180;
+// 평행투상 — 소실점 없음
+function projIso(p){const K=Math.cos(30*D2R);return [(p[0]-p[2])*K, -p[1]+(p[0]+p[2])*0.5];}
+function projOblique(p,k,aDeg){const a=aDeg*D2R;return [p[0]+p[2]*k*Math.cos(a), -p[1]+p[2]*k*Math.sin(a)];}
+// 투시투상 — yaw/pitch 로 1점·2점·3점
+function projPersp(p,yaw,pitch,Dist,f){
+  const cy=Math.cos(yaw),sy=Math.sin(yaw);
+  const X=p[0]*cy-p[2]*sy, Zr=p[0]*sy+p[2]*cy, Y=p[1];
+  const cp=Math.cos(pitch),sp=Math.sin(pitch);
+  const Y2=Y*cp-Zr*sp, Z2=Y*sp+Zr*cp;
+  const den=Math.max(0.35,Dist-Z2);
+  return [f*X/den, -f*Y2/den];
+}
+// 방향의 소실점 = 그 방향 무한점의 상. 큰 수를 대입하면 카메라 뒤로 넘어가
+// 클램프에 걸리므로, 극한값을 해석적으로 구한다.
+//   sx = f·X/(D−t·Z) → t→∞ 이면 −f·X/Z,   sy = f·Y/Z
+// Z≈0 이면 그 방향은 화면과 평행 → 소실점 없음(평행선 유지).
+function vanishPt(dir,yaw,pitch,f){
+  const cy=Math.cos(yaw),sy=Math.sin(yaw);
+  const X=dir[0]*cy-dir[2]*sy, Zr=dir[0]*sy+dir[2]*cy, Y=dir[1];
+  const cp=Math.cos(pitch),sp=Math.sin(pitch);
+  const Y2=Y*cp-Zr*sp, Z2=Y*sp+Zr*cp;
+  if(Math.abs(Z2)<1e-6) return null;          // 화면과 평행 → 소실점 없음
+  return [-f*X/Z2, f*Y2/Z2];
+}
+// 투상법 정의
+const METHODS={
+  ortho:{label:"정투상도",sub:"정면도",vp:0,
+    fn:(p)=>[p[0],-p[1]],
+    why:"물체를 <b>정면에서 수직으로</b> 투상해 실제 모양·치수가 그대로 나타납니다. 입체감은 없습니다."},
+  iso:{label:"등각투상도",sub:"세 축 120°",vp:0,
+    fn:(p)=>projIso(p),
+    why:"세 축이 서로 <b>120°</b>를 이루고, 세 방향 모두 <b>같은 비율</b>로 그립니다. 평행투상이라 <b>소실점이 없습니다</b>."},
+  cav:{label:"사투상도 (카발리에)",sub:"깊이 1배",vp:0,
+    fn:(p)=>projOblique(p,1,45),
+    why:"<b>정면은 실제 모양 그대로</b>, 깊이만 비스듬히 그립니다. 카발리에는 깊이를 <b>1배</b>로 그려 다소 길어 보입니다."},
+  cab:{label:"사투상도 (캐비닛)",sub:"깊이 1/2배",vp:0,
+    fn:(p)=>projOblique(p,0.5,45),
+    why:"사투상도 중 깊이를 <b>1/2</b>로 줄여 그리는 방식입니다. 카발리에보다 자연스러워 보입니다."},
+  p1:{label:"1점 투시도",sub:"소실점 1개",vp:1,yaw:0,pitch:0,
+    fn:(p,t)=>projPersp(p,0,0,t.dist,t.f),
+    why:"화면에 <b>한 면이 평행</b>하게 놓여, 깊이 방향 모서리만 <b>한 점</b>으로 모입니다. 실내·복도 그림에 씁니다."},
+  p2:{label:"2점 투시도",sub:"소실점 2개",vp:2,yaw:30*D2R,pitch:0,
+    fn:(p,t)=>projPersp(p,30*D2R,0,t.dist,t.f),
+    why:"물체가 <b>비스듬히</b> 놓여 가로 두 방향이 각각 소실점으로 모입니다. 수직선은 그대로 <b>평행</b>합니다. 건물 외관에 씁니다."},
+  p3:{label:"3점 투시도",sub:"소실점 3개",vp:3,yaw:32*D2R,pitch:44*D2R,
+    fn:(p,t)=>projPersp(p,32*D2R,44*D2R,t.dist,t.f),
+    why:"위·아래에서 올려보거나 내려볼 때 <b>수직 방향까지</b> 모입니다. 고층 건물을 올려다본 그림이 대표적입니다."}
+};
+const GALLERY=["ortho","iso","cav","cab","p1","p2","p3"];
+
+/* ============ 그리기 ============ */
+function fit(cv){
+  const r=cv.getBoundingClientRect(),dpr=Math.min(devicePixelRatio||1,2);
+  const w=Math.max(10,r.width),h=Math.max(10,r.height);
+  cv.width=Math.round(w*dpr);cv.height=Math.round(h*dpr);
+  const c=cv.getContext("2d");c.setTransform(dpr,0,0,dpr,0,0);c.clearRect(0,0,w,h);
+  return {c,w,h};
+}
+const TONE={front:"#e7dec6",back:"#cfc2a3",left:"#dbcfb0",right:"#cfc2a3",top:"#f3ecd9",bottom:"#c3b596"};
+function drawShape(cv,shId,mid,opt){
+  opt=opt||{};
+  const {c,w,h}=fit(cv);
+  const sh=SHAPES[shId], M=METHODS[mid];
+  const ctr=centerOf(sh);
+  const t={dist:opt.dist||5,f:opt.f||420};
+  const P=p=>M.fn([p[0]-ctr[0],p[1]-ctr[1],p[2]-ctr[2]],t);
+  const faces=facesOf(sh).map(f=>({pts:f.pts.map(P),side:f.side,
+    z:f.pts.reduce((s,p)=>s+(p[0]-ctr[0])+(p[1]-ctr[1])-(p[2]-ctr[2]),0)/4}));
+  let mnX=1e9,mxX=-1e9,mnY=1e9,mxY=-1e9;
+  faces.forEach(f=>f.pts.forEach(p=>{mnX=Math.min(mnX,p[0]);mxX=Math.max(mxX,p[0]);mnY=Math.min(mnY,p[1]);mxY=Math.max(mxY,p[1]);}));
+  const objW=Math.max(.01,mxX-mnX), objH=Math.max(.01,mxY-mnY);
+
+  // 소실점을 미리 구해 화면 범위에 포함시킨다 (안 그러면 화면 밖이라 안 보임)
+  let vps=[];
+  if(opt.showVP && M.vp>0){
+    const yaw=M.yaw||0, pitch=M.pitch||0;      // 투상 정의와 반드시 같은 값을 써야 소실점이 맞는다
+    const cx0=(mnX+mxX)/2, cy0=(mnY+mxY)/2;
+    const LIM=Math.max(objW,objH)*3.2;                  // 너무 먼 소실점은 제외(물체가 점처럼 작아짐)
+    [[1,0,0],[0,0,1],[0,1,0]].forEach(d=>{
+      const v=vanishPt(d,yaw,pitch,t.f); if(!v) return;
+      if(Math.abs(v[0]-cx0)>LIM||Math.abs(v[1]-cy0)>LIM) return;
+      vps.push(v);
+      mnX=Math.min(mnX,v[0]);mxX=Math.max(mxX,v[0]);
+      mnY=Math.min(mnY,v[1]);mxY=Math.max(mxY,v[1]);
+    });
+  }
+  const pad=opt.pad||22;
+  const s=Math.min((w-pad*2)/Math.max(.01,mxX-mnX),(h-pad*2)/Math.max(.01,mxY-mnY));
+  const ox=(w-(mxX-mnX)*s)/2-mnX*s, oy=(h-(mxY-mnY)*s)/2-mnY*s;
+  const S=p=>[ox+p[0]*s,oy+p[1]*s];
+  // 수렴선 + 소실점 표시
+  if(vps.length){
+    c.save();
+    const corners=[];
+    faces.forEach(f=>f.pts.forEach(p=>{
+      const k=p[0].toFixed(1)+","+p[1].toFixed(1);
+      if(!corners.some(q=>q.k===k)) corners.push({k,p});
+    }));
+    // 선이 너무 많으면 지저분해져 바깥쪽 꼭짓점 위주로 추림
+    const cx1=(mnX+mxX)/2, cy1=(mnY+mxY)/2;
+    corners.sort((a,b)=>Math.hypot(b.p[0]-cx1,b.p[1]-cy1)-Math.hypot(a.p[0]-cx1,a.p[1]-cy1));
+    const useCorners=corners.slice(0,4);      // 바깥쪽 4개만 — 선이 많으면 지저분해짐
+    c.strokeStyle="rgba(226,86,74,.34)";c.lineWidth=1;c.setLineDash([5,4]);
+    vps.forEach(v=>{
+      const vp=S(v);
+      useCorners.forEach(q=>{const a=S(q.p);
+        c.beginPath();c.moveTo(a[0],a[1]);c.lineTo(vp[0],vp[1]);c.stroke();});
+    });
+    c.restore();
+  }
+  faces.sort((a,b)=>a.z-b.z);
+  faces.forEach(f=>{
+    c.beginPath();
+    f.pts.forEach((p,i)=>{const q=S(p);i?c.lineTo(q[0],q[1]):c.moveTo(q[0],q[1]);});
+    c.closePath();
+    c.fillStyle=TONE[f.side]||"#e7dec6";c.fill();
+    c.strokeStyle="#1c3247";c.lineWidth=opt.lw||1.5;c.lineJoin="round";c.stroke();
+  });
+  // 소실점 표시는 물체 '위'에 — 1점 투시는 소실점이 물체 한가운데라 뒤에 그리면 가려진다
+  if(vps.length){
+    c.save();
+    vps.forEach(v=>{
+      const vp=S(v);
+      c.fillStyle="#fff";c.beginPath();c.arc(vp[0],vp[1],7,0,7);c.fill();
+      c.fillStyle="#e2564a";c.beginPath();c.arc(vp[0],vp[1],5,0,7);c.fill();
+      c.strokeStyle="#8f2b21";c.lineWidth=1.2;c.stroke();
+      c.fillStyle="#8f2b21";c.font="700 11px ui-monospace,monospace";
+      c.fillText("VP",vp[0]+9,vp[1]-7);
+    });
+    c.restore();
+  }
+}
+
+/* ============ 비교하기 ============ */
+const el=id=>document.getElementById(id);
+const gallery=el("gallery"),bigCv=el("bigCv"),bigCap=el("bigCap"),learnExplain=el("learnExplain"),
+      ctlRange=el("ctlRange"),ctlName=el("ctlName"),ctlVal=el("ctlVal"),ctlWrap=el("ctlWrap");
+let curShape="L", curMethod="iso", dist=5;
+
+SHAPE_IDS.forEach(id=>{
+  const b=document.createElement("button");
+  b.className="segBtn";b.type="button";b.textContent=SHAPES[id].name;b.dataset.id=id;
+  b.onclick=()=>{curShape=id;
+    el("shapeSeg").querySelectorAll(".segBtn").forEach(x=>x.setAttribute("aria-pressed",x.dataset.id===id));
+    renderLearn();};
+  el("shapeSeg").appendChild(b);
+});
+function buildGallery(){
+  gallery.innerHTML="";
+  const paint=[];
+  GALLERY.forEach(mid=>{
+    const M=METHODS[mid];
+    const d=document.createElement("div");
+    d.className="cell"+(mid===curMethod?" on":"");d.dataset.m=mid;
+    const cv=document.createElement("canvas");d.appendChild(cv);
+    const nm=document.createElement("div");nm.className="nm";nm.textContent=M.label;d.appendChild(nm);
+    const sb=document.createElement("div");sb.className="sub";sb.textContent=M.sub;d.appendChild(sb);
+    d.onclick=()=>{curMethod=mid;renderLearn();};
+    gallery.appendChild(d);
+    paint.push(()=>drawShape(cv,curShape,mid,{pad:12,lw:1.15,dist:dist}));
+  });
+  paint.forEach(f=>f());
+}
+function renderLearn(){
+  buildGallery();
+  const M=METHODS[curMethod];
+  bigCap.textContent=M.label;
+  drawShape(bigCv,curShape,curMethod,{showVP:true,dist:dist});
+  const isP=M.vp>0;
+  ctlWrap.style.display=isP?"block":"none";
+  if(isP){ ctlName.textContent="시점 거리 (가까울수록 원근이 강해짐)"; ctlVal.textContent=dist.toFixed(1); }
+  learnExplain.innerHTML="<b>"+M.label+"</b> — "+M.why+
+    "<br>소실점 <b>"+M.vp+"개</b>"+(M.vp===0?" (평행투상: 평행한 모서리는 끝까지 평행)":" (투시투상: 평행한 모서리가 한 점으로 모임)");
+}
+ctlRange.addEventListener("input",()=>{ dist=3.5+parseFloat(ctlRange.value)*7; renderLearn(); });
+
+/* ============ 퀴즈 ============ */
+const qPrompt=el("qPrompt"),qChoices=el("qChoices"),qStageCv=el("qStageCv"),qCap=el("qCap"),
+      qToast=el("qToast"),qExplain=el("qExplain"),btnSubmit=el("btnSubmit"),btnNext=el("btnNext");
+let quiz={type:null,total:8,round:1,score:0,combo:0,best:0,answered:false,sel:null,q:null,log:[],started:0};
+
+function makeQ(type){
+  const sh=pick(SHAPE_IDS);
+  if(type==="kind"){
+    const mid=pick(GALLERY);
+    const pool=shuffle(GALLERY.filter(m=>m!==mid)).slice(0,3);
+    const opts=shuffle([{m:mid,ok:true},...pool.map(m=>({m,ok:false}))]);
+    return {type,sh,mid,opts,answer:opts.findIndex(o=>o.ok),
+      prompt:"이 그림은 어떤 <b>투상법</b>으로 그린 것일까요?",cap:"투상도"};
+  }
+  // vp : 소실점 개수
+  const mid=pick(GALLERY);
+  const n=METHODS[mid].vp;
+  const opts=shuffle([0,1,2,3].map(v=>({v,ok:v===n})));
+  return {type,sh,mid,opts,answer:opts.findIndex(o=>o.ok),
+    prompt:"이 그림의 <b>소실점</b>은 몇 개일까요?",cap:"투상도"};
+}
+function renderQ(){
+  const q=quiz.q;
+  qPrompt.innerHTML=q.prompt;qCap.textContent=q.cap;
+  drawShape(qStageCv,q.sh,q.mid,{dist:5});          // 문제엔 소실점 힌트 감춤
+  qChoices.innerHTML="";
+  const paint=[];
+  q.opts.forEach((o,i)=>{
+    const b=document.createElement("button");b.className="choice";b.type="button";
+    const num=document.createElement("span");num.className="num";num.textContent="①②③④"[i];b.appendChild(num);
+    const t=document.createElement("div");t.className="tx";
+    if(q.type==="kind") t.innerHTML=METHODS[o.m].label+"<small>"+METHODS[o.m].sub+"</small>";
+    else t.innerHTML=o.v+"개"+"<small>"+(o.v===0?"평행투상":"투시투상")+"</small>";
+    b.appendChild(t);
+    b.onclick=()=>{if(quiz.answered)return;quiz.sel=i;btnSubmit.disabled=false;
+      qChoices.querySelectorAll(".choice").forEach(x=>x.classList.toggle("sel",x===b));};
+    qChoices.appendChild(b);
+  });
+  paint.forEach(f=>f());
+  quiz.answered=false;quiz.sel=null;
+  btnSubmit.disabled=true;btnSubmit.classList.remove("hidden");
+  btnNext.classList.add("hidden");qExplain.classList.add("hidden");
+  qToast.className="toast go";qToast.innerHTML="보기를 고른 뒤 <b>제출</b>을 누르세요.";
+  el("qRound").textContent=quiz.round;el("qTotal").textContent=quiz.total;
+  el("qScore").textContent=quiz.score;el("qCombo").textContent="연속 "+quiz.combo;
+}
+function submitQ(){
+  if(quiz.answered||quiz.sel==null)return;
+  quiz.answered=true;
+  const q=quiz.q,ok=quiz.sel===q.answer;
+  if(ok){quiz.score++;quiz.combo++;quiz.best=Math.max(quiz.best,quiz.combo);}else quiz.combo=0;
+  quiz.log.push({round:quiz.round,ok});
+  qChoices.querySelectorAll(".choice").forEach((b,i)=>{
+    b.disabled=true;b.classList.remove("sel");
+    if(i===q.answer)b.classList.add("correct");else if(i===quiz.sel)b.classList.add("wrong");
+  });
+  el("qScore").textContent=quiz.score;el("qCombo").textContent="연속 "+quiz.combo;
+  qToast.className="toast "+(ok?"ok":"no");
+  qToast.textContent=ok?(quiz.combo>=3?"정답! "+quiz.combo+"연속 🔥":"정답이에요!")
+                      :"아쉬워요. 정답은 "+"①②③④"[q.answer]+"번.";
+  drawShape(qStageCv,q.sh,q.mid,{showVP:true,dist:5});   // 정답 공개 시 소실점 표시
+  const M=METHODS[q.mid];
+  qExplain.innerHTML="<b>"+M.label+"</b> (소실점 "+M.vp+"개)<br>"+M.why;
+  qExplain.classList.remove("hidden");
+  btnSubmit.classList.add("hidden");btnNext.classList.remove("hidden");
+  btnNext.textContent=quiz.round>=quiz.total?"결과 보기 →":"다음 문제 →";
+}
+function startQuiz(type,total){
+  quiz={type,total:total||8,round:1,score:0,combo:0,best:0,answered:false,sel:null,q:null,log:[],started:Date.now()};
+  quiz.q=nextQ();renderQ();
+}
+const nextQ=()=>makeQ(quiz.type==="exam"?pick(["kind","vp"]):quiz.type);
+btnSubmit.onclick=submitQ;
+btnNext.onclick=()=>{if(quiz.round>=quiz.total){finish();return;}quiz.round++;quiz.q=nextQ();renderQ();};
+el("btnRestart").onclick=()=>startQuiz(quiz.type,quiz.total);
+function finish(){
+  const pct=Math.round(quiz.score/quiz.total*100),sec=Math.round((Date.now()-quiz.started)/1000);
+  qChoices.innerHTML="";
+  qPrompt.innerHTML="🎉 <b>"+quiz.total+"문제 완료!</b>";
+  qToast.className="toast "+(pct>=80?"ok":pct>=60?"go":"no");
+  qToast.textContent=pct+"점 · "+quiz.score+"/"+quiz.total+" 정답 · 최고 "+quiz.best+"연속 · "+sec+"초";
+  qExplain.classList.remove("hidden");
+  qExplain.innerHTML=pct>=80?"훌륭합니다! 투상법을 정확히 구분합니다."
+    :pct>=60?"좋아요. <b>비교하기</b>에서 같은 물체를 7가지로 나란히 보면 더 확실해집니다."
+    :"<b>비교하기</b> 탭에서 소실점(빨간 점)이 있는지부터 확인하는 습관을 들여 보세요.";
+  btnSubmit.classList.add("hidden");btnNext.classList.add("hidden");
+  if(window.ResultCollector&&quiz.type==="exam"){
+    try{ResultCollector.open({score:pct,correct:quiz.score,total:quiz.total,
+      wrong:quiz.log.filter(r=>!r.ok).map(r=>r.round),durationSec:sec});}catch(e){}
+  }
+}
+
+/* ============ 탭 ============ */
+const TABS=[["tabLearn","learn"],["tabKind","kind"],["tabVP","vp"],["tabExam","exam"]];
+function setMode(m){
+  TABS.forEach(([id,v])=>el(id).setAttribute("aria-pressed",v===m));
+  const learn=m==="learn";
+  el("secLearn").classList.toggle("hidden",!learn);
+  el("secQuiz").classList.toggle("hidden",learn);
+  if(learn)renderLearn();else startQuiz(m,m==="exam"?10:8);
+}
+TABS.forEach(([id,v])=>el(id).onclick=()=>setMode(v));
+let rt=null;
+addEventListener("resize",()=>{clearTimeout(rt);rt=setTimeout(()=>{
+  if(el("secLearn").classList.contains("hidden")){if(quiz.q)renderQ();}else renderLearn();},180);});
+
+el("shapeSeg").querySelector(".segBtn").setAttribute("aria-pressed","true");
+setMode("learn");
+})();
+</script>
+</body>
+</html>
