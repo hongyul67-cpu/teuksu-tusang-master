@@ -381,8 +381,18 @@ function drawShape(cv,shId,mid,opt){
     });
     c.restore();
   }
-  faces.sort((a,b)=>a.z-b.z);
-  faces.forEach(f=>{
+  /* 뒷면까지 전부 그려서 속이 비치는 서피스처럼 보였다.
+     화면에 찍힌 다각형의 감김 방향으로 바깥을 보는 면만 남긴다.
+     (투영이 등각이든 사투상이든 투시든 똑같이 통한다) */
+  const signedArea=pts=>{
+    let a=0;
+    for(let i=0;i<pts.length;i++){ const p=S(pts[i]), q=S(pts[(i+1)%pts.length]);
+      a += p[0]*q[1] - q[0]*p[1]; }
+    return a/2;
+  };
+  const vis=faces.filter(f=>signedArea(f.pts) > 0);
+  vis.sort((a,b)=>a.z-b.z);
+  vis.forEach(f=>{
     c.beginPath();
     f.pts.forEach((p,i)=>{const q=S(p);i?c.lineTo(q[0],q[1]):c.moveTo(q[0],q[1]);});
     c.closePath();
