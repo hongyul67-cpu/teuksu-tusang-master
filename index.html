@@ -363,7 +363,9 @@ function drawShape(cv,shId,mid,opt){
   const t={dist:opt.dist||5,f:opt.f||420};
   const P=p=>M.fn([p[0]-ctr[0],p[1]-ctr[1],p[2]-ctr[2]],t);
   const faces=facesOf(sh).map(f=>({pts:f.pts.map(P),side:f.side,
-    z:f.pts.reduce((s,p)=>s+(p[0]-ctr[0])+(p[1]-ctr[1])-(p[2]-ctr[2]),0)/4}));
+    /* 뒤에서 남기는 면(signedArea>0)은 관측자가 +x·+y·+z 쪽에 있을 때 보이는 면이다.
+       그런데 정렬 키만 -z 를 써서 '가장 가까운 면'이 오히려 맨 아래에 깔렸다 → +z 로 맞춘다 */
+    z:f.pts.reduce((s,p)=>s+(p[0]-ctr[0])+(p[1]-ctr[1])+(p[2]-ctr[2]),0)/4}));
   let mnX=1e9,mxX=-1e9,mnY=1e9,mxY=-1e9;
   faces.forEach(f=>f.pts.forEach(p=>{mnX=Math.min(mnX,p[0]);mxX=Math.max(mxX,p[0]);mnY=Math.min(mnY,p[1]);mxY=Math.max(mxY,p[1]);}));
   const objW=Math.max(.01,mxX-mnX), objH=Math.max(.01,mxY-mnY);
@@ -689,7 +691,7 @@ function finish(){
   qToast.textContent=pct+"점 · "+quiz.score+"/"+quiz.total+" 정답 · 최고 "+quiz.best+"연속 · "+sec+"초";
   qExplain.classList.remove("hidden");
   qExplain.innerHTML=pct>=80?"훌륭합니다! 투상법을 정확히 구분합니다."
-    :pct>=60?"좋아요. <b>비교하기</b>에서 같은 물체를 7가지로 나란히 보면 더 확실해집니다."
+    :pct>=60?"좋아요. <b>비교하기</b>에서 같은 물체를 8가지로 나란히 보면 더 확실해집니다."
     :"<b>비교하기</b> 탭에서 소실점(빨간 점)이 있는지부터 확인하는 습관을 들여 보세요.";
   btnSubmit.classList.add("hidden");btnNext.classList.add("hidden");
   // 제출 — 연습 모드·종합시험 모두 가능 (제출 링크가 없어도 버튼은 보이고 안내해 줌)
@@ -715,7 +717,14 @@ function setMode(m){
 TABS.forEach(([id,v])=>el(id).onclick=()=>setMode(v));
 let rt=null;
 addEventListener("resize",()=>{clearTimeout(rt);rt=setTimeout(()=>{
-  if(el("secLearn").classList.contains("hidden")){if(quiz.q)renderQ();}else renderLearn();},180);});
+  if(el("secLearn").classList.contains("hidden")){
+    if(!quiz.q)return;
+    /* 이미 채점한 문제를 renderQ 로 다시 만들면 보기 잠금이 풀려
+       답을 고쳐 점수를 또 얻을 수 있었다(채점 1회 위반). 그림만 다시 그린다.
+       종합시험은 채점을 끝으로 미루므로 소실점을 여기서도 보이면 안 된다. */
+    if(quiz.answered) drawShape(qStageCv,quiz.q.sh,quiz.q.mid,{showVP:quiz.type!=="exam",dist:5});
+    else renderQ();
+  } else renderLearn();},180);});
 
 el("shapeSeg").querySelector(".segBtn").setAttribute("aria-pressed","true");
 setMode("learn");
