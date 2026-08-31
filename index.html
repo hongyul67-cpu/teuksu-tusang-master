@@ -554,10 +554,21 @@ function submitQ(){
 }
 function startQuiz(type,total){
   const rv=el("qReview"); if(rv) rv.remove();
-  quiz={type,total:total||8,round:1,score:0,combo:0,best:0,answered:false,sel:null,rev:[],q:null,log:[],started:Date.now(),wrongDetail:[]};
+  quiz={type,total:total||8,round:1,score:0,combo:0,best:0,answered:false,sel:null,rev:[],q:null,log:[],started:Date.now(),wrongDetail:[],used:new Set()};
   quiz.q=nextQ();renderQ();
 }
-const nextQ=()=>makeQ(quiz.type==="exam"?pick(["kind","vp"]):quiz.type);
+/* 같은 그림·같은 투상법이 한 세트 안에서 다시 나오지 않게 한다
+   (예전에는 8문항 중 1번과 4번이 완전히 같은 문제로 나오기도 했다) */
+const nextQ=()=>{
+  const t = quiz.type==="exam" ? pick(["kind","vp"]) : quiz.type;
+  let q=null;
+  for(let i=0;i<60;i++){
+    q=makeQ(t);
+    const k=t+"|"+q.mid+"|"+q.sh;
+    if(!quiz.used.has(k)){ quiz.used.add(k); return q; }
+  }
+  return q;   /* 조합을 다 쓰면 그때는 그대로 낸다 */
+};
 btnSubmit.onclick=submitQ;
 btnNext.onclick=()=>{if(quiz.round>=quiz.total){finish();return;}quiz.round++;quiz.q=nextQ();renderQ();};
 el("btnRestart").onclick=()=>startQuiz(quiz.type,quiz.total);
